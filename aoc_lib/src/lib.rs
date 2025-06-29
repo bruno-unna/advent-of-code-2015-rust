@@ -1,4 +1,4 @@
-use std::fs;      // Import the file system module
+use std::fs; // Import the file system module
 use std::path::Path; // Import Path for path manipulation
 
 pub fn read_input(day: u8) -> String {
@@ -13,16 +13,14 @@ pub fn read_input(day: u8) -> String {
         .expect(&format!("Could not read input text file for Day {}. Make sure '{}' exists in the 'inputs' directory.", day, filename))
 }
 
-// Keep the test module for the library itself if you have tests for aoc_lib
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn it_works() {
-        // You might add tests here for read_input or other aoc_lib functions
+        // TODO: Add tests here for read_input or other aoc_lib functions
         // For example, a test that checks if reading a non-existent file panics (as per expect)
-        // Or if you create a dummy test file for it to read.
         assert!(true); // Placeholder test
     }
 }
