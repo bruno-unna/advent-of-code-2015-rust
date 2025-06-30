@@ -25,8 +25,22 @@ pub fn solve_part1(input: &str) -> i32 {
 }
 
 pub fn solve_part2(input: &str) -> i32 {
-    // Using i32 as example return type, adjust as needed
-    input.lines().count() as i32 // Placeholder implementation
+    let mut pointer = 0;
+
+    let r = input
+        .chars()
+        .scan(1, |floor, ch| {
+            *floor += match ch {
+                '(' => 1,
+                ')' => -1,
+                _ => 0,
+            };
+            pointer += 1;
+            return if *floor < 0 { None } else { Some(pointer) };
+        })
+        .last();
+
+    r.unwrap_or(0)
 }
 
 // --- Unit Tests Section ---
