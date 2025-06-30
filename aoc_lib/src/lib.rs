@@ -20,7 +20,7 @@ mod tests {
     #[test]
     fn it_works() {
         // TODO: Add tests here for read_input or other aoc_lib functions
-        // For example, a test that checks if reading a non-existent file panics (as per expect)
+        // For example, a test that checks if reading a non-existent file panics (as expected!)
         assert!(true); // Placeholder test
     }
 }

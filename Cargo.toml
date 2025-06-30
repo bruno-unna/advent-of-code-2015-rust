@@ -2,5 +2,6 @@
 members = [
     "aoc_lib", # Path to your common utility library binary crate
     "day01", # Each day's solution (executable binary crate) will be added here: "day01", "day02", etc.
+    "day02",
 ]
 resolver = "3"  # it goes well with edition 2024
