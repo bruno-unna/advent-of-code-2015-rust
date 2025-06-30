@@ -4,7 +4,7 @@ use std::path::Path; // Import Path for path manipulation
 pub fn read_input(day: u8) -> String {
     // Construct the filename based on the day number
     // Assumes input text files are in a directory named "inputs" one level up from aoc_lib
-    let filename = format!("../inputs/{:02}.txt", day);
+    let filename = format!("inputs/{:02}.txt", day);
 
     // Read the entire content of the file into a String.
     // `.expect()` is used here for simplicity in Advent of Code;
