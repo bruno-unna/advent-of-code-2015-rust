@@ -85,22 +85,18 @@ pub fn solve_part1(input: &str) -> i32 {
 /// assert_eq!(day01::solve_part2("((("), 0); // Santa never reaches the basement
 /// ```
 pub fn solve_part2(input: &str) -> i32 {
-    let mut pointer = 0;
-
-    let r = input
-        .chars()
-        .scan(1, |floor, ch| {
-            *floor += match ch {
-                '(' => 1,
-                ')' => -1,
-                _ => 0,
-            };
-            pointer += 1;
-            return if *floor < 0 { None } else { Some(pointer) };
-        })
-        .last();
-
-    r.unwrap_or(0)
+    let mut floor = 0;
+    for (idx, ch) in input.chars().enumerate() {
+        floor += match ch {
+            '(' => 1,
+            ')' => -1,
+            _ => 0,
+        };
+        if floor < 0 {
+            return (idx + 1) as i32; // 1-indexed position
+        }
+    }
+    0 // If basement is never reached
 }
 
 // --- Unit Tests Section ---
