@@ -2,16 +2,13 @@ use std::fs::{self, File};
 use std::io::{self, BufRead, BufReader};
 use std::path::Path; // Import Path for path manipulation
 
-pub fn read_single_string(day: u8) -> String {
+pub fn read_single_string(day: u8) -> io::Result<String> {
     // Construct the filename based on the day number
     // Assumes input text files are in a directory named "inputs" one level up from aoc_lib
     let filename = format!("inputs/{:02}.txt", day);
 
     // Read the entire content of the file into a String.
-    // `.expect()` is used here for simplicity in Advent of Code;
-    // in production code, you'd typically handle the Result<String, io::Error> more gracefully.
     fs::read_to_string(&Path::new(&filename))
-        .expect(&format!("Could not read input text file for Day {}. Make sure '{}' exists in the 'inputs' directory.", day, filename))
 }
 
 pub fn read_multiple_strings(day: u8) -> io::Result<Vec<String>> {

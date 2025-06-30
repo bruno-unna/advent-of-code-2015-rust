@@ -10,9 +10,14 @@ use aoc_lib::read_single_string;
 ///
 /// Reads the input file for Day 1 and prints the solutions for Part 1 and Part 2.
 fn main() {
-    let input_text = read_single_string(1); // Read input from the text file for Day 1
-    println!("Day 1 Part 1: {}", solve_part1(&input_text));
-    println!("Day 1 Part 2: {}", solve_part2(&input_text));
+    let line_result = read_single_string(1);
+
+    if let Ok(owned_line) = line_result {
+        println!("Day 1 Part 1: {}", solve_part1(&owned_line));
+        println!("Day 1 Part 2: {}", solve_part2(&owned_line));
+    } else {
+        eprintln!("Error reading input for Day 1: {:?}", line_result.err());
+    }
 }
 
 /// Calculates the final floor Santa ends up on.
