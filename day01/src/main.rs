@@ -143,4 +143,10 @@ mod tests {
         let example_input = "()())";
         assert_eq!(solve_part2(example_input), 5);
     }
+
+    #[test]
+    fn test_solve_part2_example_c() {
+        let example_input = "(((";
+        assert_eq!(solve_part2(example_input), 0);
+    }
 }
