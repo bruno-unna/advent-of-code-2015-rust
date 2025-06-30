@@ -1,5 +1,15 @@
+//! Advent of Code 2015 - Day 2: I Was Told There Would Be No Math
+//!
+//! This module contains the solution for Day 2 of Advent of Code 2015,
+//! which involves calculating the amount of wrapping paper and ribbon needed
+//! for a list of presents with given dimensions.
+
 use aoc_lib::read_multiple_strings;
 
+/// Main entry point of the Day 2 solution.
+///
+/// Reads the input file for Day 2, processes it to calculate
+/// the total wrapping paper and ribbon needed, and prints the results for Part 1 and Part 2.
 fn main() {
     let lines_result = read_multiple_strings(2);
 
@@ -22,6 +32,14 @@ fn main() {
     }
 }
 
+/// Parses a dimensions string (e.g., "2x3x4") into a tuple of three `i32` integers.
+///
+/// Returns `Some((width, height, length))` if parsing is successful,
+/// otherwise returns `None` if the input format is invalid or parts cannot be parsed.
+///
+/// # Arguments
+///
+/// * `input` - A string slice representing the dimensions (e.g., "LxWxH").
 fn string_to_tuple(input: &str) -> Option<(i32, i32, i32)> {
     let mut iterator = input.split('x');
 
@@ -32,20 +50,43 @@ fn string_to_tuple(input: &str) -> Option<(i32, i32, i32)> {
     Some((w, h, l))
 }
 
+/// Calculates the total amount of wrapping paper needed for a present.
+///
+/// The formula is `2*lw + 2*wh + 2*hl + smallest_side_area`.
+///
+/// # Arguments
+///
+/// * `dimensions` - A tuple `(width, length, height)` representing the present's dimensions.
 fn calculate_paper((w, l, h): (i32, i32, i32)) -> i32 {
     let areas = [l * w, w * h, h * l];
-    let min_area = areas.iter().min().unwrap();
+    let min_area = *areas.iter().min().unwrap();
     let areas_sum: i32 = areas.iter().map(|&x| x).sum();
     2 * areas_sum + min_area
 }
 
+/// Calculates the total length of ribbon needed for a present.
+///
+/// The formula is `smallest_perimeter + volume`.
+/// The smallest perimeter is the sum of the two smallest sides times 2.
+///
+/// # Arguments
+///
+/// * `dimensions` - A tuple `(width, length, height)` representing the present's dimensions.
 fn calculate_ribbon((w, l, h): (i32, i32, i32)) -> i32 {
     let perimeters = [2 * (l + w), 2 * (w + h), 2 * (h + l)];
-    let min_perimeter = perimeters.iter().min().unwrap();
+    let min_perimeter = *perimeters.iter().min().unwrap();
     let ribbon_length = w * l * h;
     min_perimeter + ribbon_length
 }
 
+/// Solves Day 2 Part 1: Calculates the total square feet of wrapping paper needed.
+///
+/// Iterates through each line of input, parses it into present dimensions,
+/// calculates the paper needed for each, and sums the results.
+///
+/// # Arguments
+///
+/// * `input` - A slice of string slices, where each string represents the dimensions of a present (e.g., "2x3x4").
 pub fn solve_part1(input: &[&str]) -> i32 {
     let input_tuples = input
         .iter()
@@ -54,6 +95,14 @@ pub fn solve_part1(input: &[&str]) -> i32 {
     dimensions.sum()
 }
 
+/// Solves Day 2 Part 2: Calculates the total feet of ribbon needed.
+///
+/// Iterates through each line of input, parses it into present dimensions,
+/// calculates the ribbon needed for each, and sums the results.
+///
+/// # Arguments
+///
+/// * `input` - A slice of string slices, where each string represents the dimensions of a present (e.g., "2x3x4").
 pub fn solve_part2(input: &[&str]) -> i32 {
     let input_tuples = input
         .iter()
@@ -62,11 +111,12 @@ pub fn solve_part2(input: &[&str]) -> i32 {
     ribbon_lengths.sum()
 }
 
-// --- Unit Tests Section ---
+/// Contains unit tests for Day 2 solutions.
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::*; // Bring everything from outer scope into tests module
 
+    /// Tests `solve_part1` with example "2x3x4" from Advent of Code.
     #[test]
     fn test_solve_part1_example_a() {
         let example_input = "2x3x4";
@@ -74,6 +124,7 @@ mod tests {
         assert_eq!(58, solve_part1(&converted_input));
     }
 
+    /// Tests `solve_part1` with example "1x1x10" from Advent of Code.
     #[test]
     fn test_solve_part1_example_b() {
         let example_input = "1x1x10";
@@ -81,6 +132,7 @@ mod tests {
         assert_eq!(43, solve_part1(&converted_input));
     }
 
+    /// Tests `solve_part2` with example "2x3x4" from Advent of Code.
     #[test]
     fn test_solve_part2_example_a() {
         let example_input = "2x3x4";
@@ -88,6 +140,7 @@ mod tests {
         assert_eq!(34, solve_part2(&converted_input));
     }
 
+    /// Tests `solve_part2` with example "1x1x10" from Advent of Code.
     #[test]
     fn test_solve_part2_example_b() {
         let example_input = "1x1x10";
