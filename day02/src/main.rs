@@ -21,6 +21,7 @@ fn main() {
         eprintln!("Error reading input for Day 2: {:?}", lines_result.err());
     }
 }
+
 fn string_to_tuple(input: &str) -> Option<(i32, i32, i32)> {
     let mut iterator = input.split('x');
 
@@ -38,6 +39,13 @@ fn calculate_paper((w, l, h): (i32, i32, i32)) -> i32 {
     2 * areas_sum + min_area
 }
 
+fn calculate_ribbon((w, l, h): (i32, i32, i32)) -> i32 {
+    let perimeters = [2 * (l + w), 2 * (w + h), 2 * (h + l)];
+    let min_perimeter = perimeters.iter().min().unwrap();
+    let ribbon_length = w * l * h;
+    min_perimeter + ribbon_length
+}
+
 pub fn solve_part1(input: &[&str]) -> i32 {
     let input_tuples = input
         .iter()
@@ -47,7 +55,11 @@ pub fn solve_part1(input: &[&str]) -> i32 {
 }
 
 pub fn solve_part2(input: &[&str]) -> i32 {
-    0
+    let input_tuples = input
+        .iter()
+        .map(|as_string: &&str| string_to_tuple(as_string).unwrap());
+    let ribbon_lengths = input_tuples.map(|t| calculate_ribbon(t));
+    ribbon_lengths.sum()
 }
 
 // --- Unit Tests Section ---
@@ -67,5 +79,19 @@ mod tests {
         let example_input = "1x1x10";
         let converted_input: Vec<&str> = Vec::from([example_input]);
         assert_eq!(43, solve_part1(&converted_input));
+    }
+
+    #[test]
+    fn test_solve_part2_example_a() {
+        let example_input = "2x3x4";
+        let converted_input: Vec<&str> = Vec::from([example_input]);
+        assert_eq!(34, solve_part2(&converted_input));
+    }
+
+    #[test]
+    fn test_solve_part2_example_b() {
+        let example_input = "1x1x10";
+        let converted_input: Vec<&str> = Vec::from([example_input]);
+        assert_eq!(14, solve_part2(&converted_input));
     }
 }
