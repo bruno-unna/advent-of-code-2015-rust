@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use aoc_lib::read_single_string;
 
 fn main() {
@@ -12,10 +14,25 @@ fn main() {
 }
 
 pub fn solve_part1(input: &str) -> i32 {
-    0
+    let mut position = (0, 0);
+    let mut visited: HashSet<(i32, i32)> = HashSet::new();
+    visited.insert(position);
+    for c in input.chars() {
+        let diff = match c {
+            '^' => (0, -1),
+            'v' => (0, 1),
+            '>' => (1, 0),
+            '<' => (-1, 0),
+            _ => (0, 0),
+        };
+        position.0 += diff.0;
+        position.1 += diff.1;
+        visited.insert(position);
+    }
+    visited.len().try_into().unwrap()
 }
 
-pub fn solve_part2(input: &str) -> i32 {
+pub fn solve_part2(_input: &str) -> i32 {
     0
 }
 
