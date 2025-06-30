@@ -13,9 +13,8 @@ fn main() {
     }
 }
 
-pub fn solve_part1(input: &str) -> i32 {
+fn walk(input: &str, visited: &mut HashSet<(i32, i32)>) {
     let mut position = (0, 0);
-    let mut visited: HashSet<(i32, i32)> = HashSet::new();
     visited.insert(position);
     for c in input.chars() {
         let diff = match c {
@@ -29,11 +28,32 @@ pub fn solve_part1(input: &str) -> i32 {
         position.1 += diff.1;
         visited.insert(position);
     }
+}
+
+pub fn solve_part1(input: &str) -> i32 {
+    let mut visited: HashSet<(i32, i32)> = HashSet::new();
+
+    walk(input, &mut visited);
     visited.len().try_into().unwrap()
 }
 
-pub fn solve_part2(_input: &str) -> i32 {
-    0
+pub fn solve_part2(input: &str) -> i32 {
+    let mut visited: HashSet<(i32, i32)> = HashSet::new();
+    let mut santa_input: String = String::new();
+    let mut robo_santa_input: String = String::new();
+
+    for (i, c) in input.chars().enumerate() {
+        if i % 2 == 0 {
+            santa_input.push(c);
+        } else {
+            robo_santa_input.push(c);
+        }
+    }
+
+    walk(&santa_input, &mut visited);
+    walk(&robo_santa_input, &mut visited);
+
+    visited.len().try_into().unwrap()
 }
 
 #[cfg(test)]
@@ -56,5 +76,23 @@ mod tests {
     fn test_solve_part1_example_c() {
         let example_input = "^v^v^v^v^v";
         assert_eq!(2, solve_part1(example_input));
+    }
+
+    #[test]
+    fn test_solve_part2_example_a() {
+        let example_input = "^v";
+        assert_eq!(3, solve_part2(example_input));
+    }
+
+    #[test]
+    fn test_solve_part2_example_b() {
+        let example_input = "^>v<";
+        assert_eq!(3, solve_part2(example_input));
+    }
+
+    #[test]
+    fn test_solve_part2_example_c() {
+        let example_input = "^v^v^v^v^v";
+        assert_eq!(11, solve_part2(example_input));
     }
 }
