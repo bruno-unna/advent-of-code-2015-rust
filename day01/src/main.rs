@@ -4,13 +4,13 @@
 //! It calculates the final floor Santa ends up on and the position of the first
 //! character that causes him to enter the basement.
 
-use aoc_lib::read_input;
+use aoc_lib::read_single_string;
 
 /// The main function for Day 1.
 ///
 /// Reads the input file for Day 1 and prints the solutions for Part 1 and Part 2.
 fn main() {
-    let input_text = read_input(1); // Read input from the text file for Day 1
+    let input_text = read_single_string(1); // Read input from the text file for Day 1
     println!("Day 1 Part 1: {}", solve_part1(&input_text));
     println!("Day 1 Part 2: {}", solve_part2(&input_text));
 }

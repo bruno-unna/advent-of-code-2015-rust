@@ -1,7 +1,8 @@
-use std::fs; // Import the file system module
+use std::fs::{self, File};
+use std::io::{self, BufRead, BufReader};
 use std::path::Path; // Import Path for path manipulation
 
-pub fn read_input(day: u8) -> String {
+pub fn read_single_string(day: u8) -> String {
     // Construct the filename based on the day number
     // Assumes input text files are in a directory named "inputs" one level up from aoc_lib
     let filename = format!("inputs/{:02}.txt", day);
@@ -11,6 +12,21 @@ pub fn read_input(day: u8) -> String {
     // in production code, you'd typically handle the Result<String, io::Error> more gracefully.
     fs::read_to_string(&Path::new(&filename))
         .expect(&format!("Could not read input text file for Day {}. Make sure '{}' exists in the 'inputs' directory.", day, filename))
+}
+
+pub fn read_multiple_strings(day: u8) -> io::Result<Vec<String>> {
+    // Construct the filename based on the day number
+    // Assumes input text files are in a directory named "inputs" one level up from aoc_lib
+    let filename = format!("inputs/{:02}.txt", day);
+    let file = File::open(filename)?;
+    let reader = BufReader::new(file);
+
+    let mut lines = Vec::new();
+    for line_result in reader.lines() {
+        let line = line_result?;
+        lines.push(line);
+    }
+    Ok(lines)
 }
 
 #[cfg(test)]
