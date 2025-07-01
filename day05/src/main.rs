@@ -22,7 +22,12 @@ fn is_nice(string: &str) -> bool {
 }
 
 pub fn solve_part1(input: &[&str]) -> i32 {
-    0
+    input
+        .iter()
+        .filter(|&x| is_nice(x))
+        .count()
+        .try_into()
+        .unwrap()
 }
 
 pub fn solve_part2(input: &[&str]) -> i32 {
