@@ -5,4 +5,5 @@ edition = "2024"
 
 [dependencies]
 aoc_lib = { path = "../aoc_lib" }
+itoa = "1.0.15"
 md-5 = "0.10.6"
