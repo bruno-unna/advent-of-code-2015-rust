@@ -1,5 +1,5 @@
 use aoc_lib::read_multiple_strings;
-
+use fancy_regex::Regex;
 fn main() {
     let lines_result = read_multiple_strings(5);
 
@@ -17,8 +17,23 @@ fn main() {
     }
 }
 
-fn is_nice(string: &str) -> bool {
-    false
+fn is_nice(haystack: &str) -> bool {
+    // Compile regexes once, ideally outside the function if called repeatedly.
+    // For this example, keep them here for illustration.
+    let three_vowels_re = Regex::new(r"[aeiou].*[aeiou].*[aeiou]").unwrap();
+    let twice_in_a_row_re = Regex::new(r"(.)\1").unwrap();
+    let forbidden_combinations_re = Regex::new(r"ab|cd|pq|xy").unwrap();
+
+    if forbidden_combinations_re.is_match(haystack).unwrap() {
+        return false;
+    }
+    if three_vowels_re.is_match(haystack).unwrap() == false {
+        return false;
+    }
+    if twice_in_a_row_re.is_match(haystack).unwrap() == false {
+        return false;
+    }
+    true
 }
 
 pub fn solve_part1(input: &[&str]) -> i32 {
