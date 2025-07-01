@@ -4,5 +4,6 @@ members = [
     "day01",
     "day02",
     "day03",
+    "day04",
 ]
 resolver = "3"  # it goes well with edition 2024
