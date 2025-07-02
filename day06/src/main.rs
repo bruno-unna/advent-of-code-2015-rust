@@ -1,7 +1,6 @@
 use aoc_lib::read_multiple_strings;
 
-use std::sync::LazyLock;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 use regex::Regex;
 
@@ -25,7 +24,7 @@ fn main() {
 const ROWS: usize = 1000;
 const COLS: usize = 1000;
 
-static FIELD: LazyLock<Mutex<Vec<Vec<i16>>>> =
+static FIELD: LazyLock<Mutex<Vec<Vec<i32>>>> =
     LazyLock::new(|| Mutex::new(vec![vec![0; COLS]; ROWS]));
 
 #[derive(Debug)]
@@ -89,7 +88,7 @@ impl Instruction {
         }
     }
 
-    fn execute(&self) {
+    fn execute_wrong(&self) {
         println!(
             "executing instruction {:?} in range {:?} through {:?}",
             self.cmd, self.corners.0, self.corners.1
@@ -115,6 +114,32 @@ impl Instruction {
             }
         }
     }
+
+    fn execute_right(&self) {
+        println!(
+            "executing instruction {:?} in range {:?} through {:?}",
+            self.cmd, self.corners.0, self.corners.1
+        );
+
+        let mut field_guard = FIELD.lock().unwrap(); // This acquires a mutable reference to the Vec<Vec<bool>>
+
+        for row in self.corners.0.y..=self.corners.1.y {
+            for col in self.corners.0.x..=self.corners.1.x {
+                let row_idx = row as usize;
+                let col_idx = col as usize;
+
+                match &self.cmd {
+                    Command::TurnOn => field_guard[row_idx][col_idx] += 1,
+                    Command::TurnOff => {
+                        if field_guard[row_idx][col_idx] > 0 {
+                            field_guard[row_idx][col_idx] -= 1;
+                        }
+                    }
+                    Command::Toggle => field_guard[row_idx][col_idx] += 2,
+                }
+            }
+        }
+    }
 }
 
 fn decode_instructions(input: &[&str]) -> impl Iterator<Item = Instruction> {
@@ -124,9 +149,21 @@ fn decode_instructions(input: &[&str]) -> impl Iterator<Item = Instruction> {
         .map(|x| x.unwrap())
 }
 
+fn init_field() {
+    let mut field_guard = FIELD.lock().unwrap(); // This yields a MutexGuard<Vec<Vec<bool>>>
+    for row in 0..ROWS {
+        for col in 0..COLS {
+            let row_idx = row as usize;
+            let col_idx = col as usize;
+            field_guard[row_idx][col_idx] = 0;
+        }
+    }
+}
+
 pub fn solve_part1(input: &[&str]) -> i32 {
     let instructions = decode_instructions(input);
-    instructions.for_each(|instr| instr.execute());
+    let _ = init_field();
+    instructions.for_each(|instr| instr.execute_wrong());
 
     // Acquire the lock on the Mutex to get access to the inner Vec<Vec<bool>>
     let field_guard = FIELD.lock().unwrap(); // This yields a MutexGuard<Vec<Vec<bool>>>
@@ -139,8 +176,15 @@ pub fn solve_part1(input: &[&str]) -> i32 {
         .unwrap()
 }
 
-pub fn solve_part2(_input: &[&str]) -> i32 {
-    0
+pub fn solve_part2(input: &[&str]) -> i32 {
+    let instructions = decode_instructions(input);
+    let _ = init_field();
+    instructions.for_each(|instr| instr.execute_right());
+
+    // Acquire the lock on the Mutex to get access to the inner Vec<Vec<bool>>
+    let field_guard = FIELD.lock().unwrap(); // This yields a MutexGuard<Vec<Vec<bool>>>
+
+    field_guard.iter().map(|row| row.iter().sum::<i32>()).sum()
 }
 
 #[cfg(test)]
