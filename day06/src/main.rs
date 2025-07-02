@@ -25,8 +25,8 @@ fn main() {
 const ROWS: usize = 1000;
 const COLS: usize = 1000;
 
-static FIELD: LazyLock<Mutex<Vec<Vec<bool>>>> =
-    LazyLock::new(|| Mutex::new(vec![vec![false; COLS]; ROWS]));
+static FIELD: LazyLock<Mutex<Vec<Vec<i16>>>> =
+    LazyLock::new(|| Mutex::new(vec![vec![0; COLS]; ROWS]));
 
 #[derive(Debug)]
 enum Command {
@@ -103,10 +103,13 @@ impl Instruction {
                 let col_idx = col as usize;
 
                 match &self.cmd {
-                    Command::TurnOn => field_guard[row_idx][col_idx] = true,
-                    Command::TurnOff => field_guard[row_idx][col_idx] = false,
+                    Command::TurnOn => field_guard[row_idx][col_idx] = 1,
+                    Command::TurnOff => field_guard[row_idx][col_idx] = 0,
                     Command::Toggle => {
-                        field_guard[row_idx][col_idx] = !field_guard[row_idx][col_idx]
+                        field_guard[row_idx][col_idx] = match field_guard[row_idx][col_idx] {
+                            0 => 1,
+                            _ => 0,
+                        }
                     }
                 }
             }
@@ -114,11 +117,15 @@ impl Instruction {
     }
 }
 
-pub fn solve_part1(input: &[&str]) -> i32 {
-    let instructions = input
+fn decode_instructions(input: &[&str]) -> impl Iterator<Item = Instruction> {
+    input
         .iter()
         .map(|&s| Instruction::new(s))
-        .map(|x| x.unwrap());
+        .map(|x| x.unwrap())
+}
+
+pub fn solve_part1(input: &[&str]) -> i32 {
+    let instructions = decode_instructions(input);
     instructions.for_each(|instr| instr.execute());
 
     // Acquire the lock on the Mutex to get access to the inner Vec<Vec<bool>>
@@ -126,7 +133,7 @@ pub fn solve_part1(input: &[&str]) -> i32 {
 
     field_guard
         .iter()
-        .map(|row| row.iter().filter(|&&x| x).count())
+        .map(|row| row.iter().filter(|&&x| x > 0).count())
         .sum::<usize>()
         .try_into()
         .unwrap()
@@ -149,5 +156,15 @@ mod tests {
         ];
 
         assert_eq!(998_996, solve_part1(&input));
+    }
+
+    #[test]
+    fn test_part2() {
+        let input = [
+            "turn on 0,0 through 0,0",    // brightness is 1
+            "toggle 0,0 through 999,999", // brighness is 2000001
+        ];
+
+        assert_eq!(2000001, solve_part2(&input));
     }
 }
