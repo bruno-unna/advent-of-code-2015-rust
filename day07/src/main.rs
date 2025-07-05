@@ -1,7 +1,10 @@
 use aoc_lib::read_multiple_strings;
 
 use regex::Regex;
-use std::{collections::HashMap, sync::{LazyLock, Mutex}}; // LazyLock for lazy static initialisation, Mutex for thread-safe mutable static // Used for parsing instruction strings
+use std::{
+    collections::HashMap,
+    sync::{LazyLock, Mutex},
+}; // LazyLock for lazy static initialisation, Mutex for thread-safe mutable static // Used for parsing instruction strings
 
 fn main() {
     let lines_result = read_multiple_strings(7);
@@ -33,26 +36,96 @@ enum Type {
 #[derive(Debug)]
 enum Argument {
     Wire(String),
-    Number(i8),
+    Number(u16),
 }
 
 #[derive(Debug)]
-struct Connection<'a> {
+struct Connection {
     connection_type: Type,
-    argument: Argument,
-    destination: &'a str,
+    arguments: (Argument, Option<Argument>),
+    destination: String,
 }
 
-static CMD_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(turn on|turn off|toggle) (\d+),(\d+) through (\d+),(\d+)$").unwrap()
-});
+static ASSIGNMENT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^(\d+)\s*->\s*([a-z]+)$").unwrap());
 
-fn parse_connection(connection_str: &str) -> Connection {
-    Connection::new()
+static AND_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+AND\s+([a-z]+)\s*->\s*([a-z]+)$").unwrap());
+
+static OR_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+OR\s+([a-z]+)\s*->\s*([a-z]+)$").unwrap());
+
+static LSHIFT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+LSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
+
+static RSHIFT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+RSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
+
+static NOT_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^NOT\s+([a-z]+)\s*->\s*([a-z]+)$").unwrap());
+
+fn parse_connection(connection_str: &str) -> Option<Connection> {
+    if let Some(captures) = ASSIGNMENT_RE.captures(connection_str) {
+        return Some(Connection {
+            connection_type: Type::Assignment,
+            arguments: (Argument::Number(captures[1].parse::<u16>().unwrap()), None),
+            destination: captures[2].to_string(),
+        });
+    }
+    if let Some(captures) = AND_RE.captures(connection_str) {
+        return Some(Connection {
+            connection_type: Type::And,
+            arguments: (
+                Argument::Wire(captures[1].to_string()),
+                Some(Argument::Wire(captures[2].to_string())),
+            ),
+            destination: captures[3].to_string(),
+        });
+    }
+    if let Some(captures) = OR_RE.captures(connection_str) {
+        return Some(Connection {
+            connection_type: Type::Or,
+            arguments: (
+                Argument::Wire(captures[1].to_string()),
+                Some(Argument::Wire(captures[2].to_string())),
+            ),
+            destination: captures[3].to_string(),
+        });
+    }
+    if let Some(captures) = LSHIFT_RE.captures(connection_str) {
+        return Some(Connection {
+            connection_type: Type::LShift,
+            arguments: (
+                Argument::Wire(captures[1].to_string()),
+                Some(Argument::Number(captures[2].parse::<u16>().unwrap())),
+            ),
+            destination: captures[3].to_string(),
+        });
+    }
+    if let Some(captures) = RSHIFT_RE.captures(connection_str) {
+        return Some(Connection {
+            connection_type: Type::RShift,
+            arguments: (
+                Argument::Wire(captures[1].to_string()),
+                Some(Argument::Number(captures[2].parse::<u16>().unwrap())),
+            ),
+            destination: captures[3].to_string(),
+        });
+    }
+    if let Some(captures) = NOT_RE.captures(connection_str) {
+        return Some(Connection {
+            connection_type: Type::Not,
+            arguments: (Argument::Wire(captures[1].to_string()), None),
+            destination: captures[2].to_string(),
+        });
+    }
+    return None;
 }
 
-fn run_circuit<'a>(connections: &'a [Connection<'a>]) -> HashMap<&'a str, u16> {
-    HashMap::new()
+fn run_circuit(connections: &[Connection]) -> HashMap<String, u16> {
+    let mut result = HashMap::new();
+
+    result
 }
 
 pub fn solve_part1(input: &[&str]) -> u16 {
@@ -82,16 +155,16 @@ mod tests {
             "NOT x -> h",
             "NOT y -> i",
         ];
-        let parsed_input = input.map(|gate_str| parse_connection(gate_str));
-        let mut result = HashMap::new();
-        result.insert("d", 72);
-        result.insert("e", 507);
-        result.insert("f", 492);
-        result.insert("g", 114);
-        result.insert("h", 65412);
-        result.insert("i", 65079);
-        result.insert("x", 123);
-        result.insert("y", 456);
+        let parsed_input = input.map(|gate_str| parse_connection(gate_str).unwrap());
+        let mut result: HashMap<String, u16> = HashMap::new();
+        result.insert("d".to_string(), 72);
+        result.insert("e".to_string(), 507);
+        result.insert("f".to_string(), 492);
+        result.insert("g".to_string(), 114);
+        result.insert("h".to_string(), 65412);
+        result.insert("i".to_string(), 65079);
+        result.insert("x".to_string(), 123);
+        result.insert("y".to_string(), 456);
 
         assert_eq!(result, run_circuit(&parsed_input));
     }
