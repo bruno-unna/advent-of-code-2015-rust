@@ -1,10 +1,7 @@
 use aoc_lib::read_multiple_strings;
 
 use regex::Regex;
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, Mutex},
-}; // LazyLock for lazy static initialisation, Mutex for thread-safe mutable static // Used for parsing instruction strings
+use std::{collections::HashMap, sync::LazyLock};
 
 fn main() {
     let lines_result = read_multiple_strings(7);
@@ -122,9 +119,53 @@ fn parse_connection(connection_str: &str) -> Option<Connection> {
     return None;
 }
 
+fn connect(connection: &Connection, result: &mut HashMap<String, u16>) {
+    match connection {
+        Connection {
+            connection_type: Type::Assignment,
+            arguments: (Argument::Number(n), None),
+            destination: dest,
+        } => result.insert((*dest).clone(), *n),
+        Connection {
+            connection_type: Type::And,
+            arguments: (Argument::Wire(x), Some(Argument::Wire(y))),
+            destination: dest,
+        } => result.insert(
+            (*dest).clone(),
+            result.get(x).unwrap() & result.get(y).unwrap(),
+        ),
+        Connection {
+            connection_type: Type::Or,
+            arguments: (Argument::Wire(x), Some(Argument::Wire(y))),
+            destination: dest,
+        } => result.insert(
+            (*dest).clone(),
+            result.get(x).unwrap() | result.get(y).unwrap(),
+        ),
+        Connection {
+            connection_type: Type::LShift,
+            arguments: (Argument::Wire(x), Some(Argument::Number(p))),
+            destination: dest,
+        } => result.insert((*dest).clone(), result.get(x).unwrap() << *p),
+        Connection {
+            connection_type: Type::RShift,
+            arguments: (Argument::Wire(x), Some(Argument::Number(p))),
+            destination: dest,
+        } => result.insert((*dest).clone(), result.get(x).unwrap() >> *p),
+        Connection {
+            connection_type: Type::Not,
+            arguments: (Argument::Wire(x), None),
+            destination: dest,
+        } => result.insert((*dest).clone(), !result.get(x).unwrap()),
+        _ => todo!(),
+    };
+}
+
 fn run_circuit(connections: &[Connection]) -> HashMap<String, u16> {
     let mut result = HashMap::new();
-
+    connections
+        .iter()
+        .for_each(|connection| connect(&connection, &mut result));
     result
 }
 
