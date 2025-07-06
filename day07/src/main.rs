@@ -170,7 +170,10 @@ fn run_circuit(connections: &[Connection]) -> HashMap<String, u16> {
 }
 
 pub fn solve_part1(input: &[&str]) -> u16 {
-    0
+    let connections_vec: Vec<Connection> =
+        input.iter().filter_map(|&c| parse_connection(c)).collect();
+    let wires = run_circuit(&connections_vec);
+    *wires.get("a").unwrap()
 }
 
 pub fn solve_part2(input: &[&str]) -> u16 {
