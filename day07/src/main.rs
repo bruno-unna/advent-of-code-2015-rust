@@ -1,7 +1,7 @@
 use aoc_lib::read_multiple_strings;
 
 use regex::Regex;
-use std::{collections::HashMap, sync::LazyLock};
+use std::sync::LazyLock;
 
 fn main() {
     let lines_result = read_multiple_strings(7);
@@ -14,14 +14,13 @@ fn main() {
             .collect(); // Collect these `&str` into a new `Vec<&str>`
 
         println!("Day 7 Part 1: {}", solve_part1(&input_line_slices));
-        println!("Day 7 Part 2: {}", solve_part2(&input_line_slices));
     } else {
         eprintln!("Error reading input: {:?}", lines_result.err());
     }
 }
 
 #[derive(Debug)]
-enum Type {
+enum GateType {
     Assignment,
     And,
     Or,
@@ -30,68 +29,82 @@ enum Type {
     Not,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Argument {
     Wire(String),
     Number(u16),
 }
 
 #[derive(Debug)]
-struct Connection {
-    connection_type: Type,
+struct Gate {
+    gate_type: GateType,
     arguments: (Argument, Option<Argument>),
     destination: String,
 }
 
 static ASSIGNMENT_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(\d+)\s*->\s*([a-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
 static AND_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+AND\s+([a-z]+)\s*->\s*([a-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+AND\s+(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
 static OR_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+OR\s+([a-z]+)\s*->\s*([a-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+OR\s+(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
 static LSHIFT_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+LSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+LSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
 
 static RSHIFT_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^([a-z]+)\s+RSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+RSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
 
 static NOT_RE: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^NOT\s+([a-z]+)\s*->\s*([a-z]+)$").unwrap());
+    LazyLock::new(|| Regex::new(r"^NOT\s+(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
-fn parse_connection(connection_str: &str) -> Option<Connection> {
-    if let Some(captures) = ASSIGNMENT_RE.captures(connection_str) {
-        return Some(Connection {
-            connection_type: Type::Assignment,
-            arguments: (Argument::Number(captures[1].parse::<u16>().unwrap()), None),
+fn parse_gate_str(gate_str: &str) -> Option<Gate> {
+    if let Some(captures) = ASSIGNMENT_RE.captures(gate_str) {
+        let arg: Argument = captures[1].parse::<u16>().map_or_else(
+            |_e| Argument::Wire(captures[1].to_string()),
+            |n| Argument::Number(n),
+        );
+        return Some(Gate {
+            gate_type: GateType::Assignment,
+            arguments: (arg, None),
             destination: captures[2].to_string(),
         });
     }
-    if let Some(captures) = AND_RE.captures(connection_str) {
-        return Some(Connection {
-            connection_type: Type::And,
-            arguments: (
-                Argument::Wire(captures[1].to_string()),
-                Some(Argument::Wire(captures[2].to_string())),
-            ),
+    if let Some(captures) = AND_RE.captures(gate_str) {
+        let left_arg: Argument = captures[1].parse::<u16>().map_or_else(
+            |_e| Argument::Wire(captures[1].to_string()),
+            |n| Argument::Number(n),
+        );
+        let right_arg: Option<Argument> = Some(captures[2].parse::<u16>().map_or_else(
+            |_e| Argument::Wire(captures[2].to_string()),
+            |n| Argument::Number(n),
+        ));
+        return Some(Gate {
+            gate_type: GateType::And,
+            arguments: (left_arg, right_arg),
             destination: captures[3].to_string(),
         });
     }
-    if let Some(captures) = OR_RE.captures(connection_str) {
-        return Some(Connection {
-            connection_type: Type::Or,
-            arguments: (
-                Argument::Wire(captures[1].to_string()),
-                Some(Argument::Wire(captures[2].to_string())),
-            ),
+    if let Some(captures) = OR_RE.captures(gate_str) {
+        let left_arg: Argument = captures[1].parse::<u16>().map_or_else(
+            |_e| Argument::Wire(captures[1].to_string()),
+            |n| Argument::Number(n),
+        );
+        let right_arg: Option<Argument> = Some(captures[2].parse::<u16>().map_or_else(
+            |_e| Argument::Wire(captures[2].to_string()),
+            |n| Argument::Number(n),
+        ));
+        return Some(Gate {
+            gate_type: GateType::Or,
+            arguments: (left_arg, right_arg),
             destination: captures[3].to_string(),
         });
     }
-    if let Some(captures) = LSHIFT_RE.captures(connection_str) {
-        return Some(Connection {
-            connection_type: Type::LShift,
+    if let Some(captures) = LSHIFT_RE.captures(gate_str) {
+        return Some(Gate {
+            gate_type: GateType::LShift,
             arguments: (
                 Argument::Wire(captures[1].to_string()),
                 Some(Argument::Number(captures[2].parse::<u16>().unwrap())),
@@ -99,9 +112,9 @@ fn parse_connection(connection_str: &str) -> Option<Connection> {
             destination: captures[3].to_string(),
         });
     }
-    if let Some(captures) = RSHIFT_RE.captures(connection_str) {
-        return Some(Connection {
-            connection_type: Type::RShift,
+    if let Some(captures) = RSHIFT_RE.captures(gate_str) {
+        return Some(Gate {
+            gate_type: GateType::RShift,
             arguments: (
                 Argument::Wire(captures[1].to_string()),
                 Some(Argument::Number(captures[2].parse::<u16>().unwrap())),
@@ -109,84 +122,102 @@ fn parse_connection(connection_str: &str) -> Option<Connection> {
             destination: captures[3].to_string(),
         });
     }
-    if let Some(captures) = NOT_RE.captures(connection_str) {
-        return Some(Connection {
-            connection_type: Type::Not,
-            arguments: (Argument::Wire(captures[1].to_string()), None),
+    if let Some(captures) = NOT_RE.captures(gate_str) {
+        let arg: Argument = captures[1].parse::<u16>().map_or_else(
+            |_e| Argument::Wire(captures[1].to_string()),
+            |n| Argument::Number(n),
+        );
+        return Some(Gate {
+            gate_type: GateType::Not,
+            arguments: (arg, None),
             destination: captures[2].to_string(),
         });
     }
     return None;
 }
 
-fn connect(connection: &Connection, result: &mut HashMap<String, u16>) {
-    match connection {
-        Connection {
-            connection_type: Type::Assignment,
-            arguments: (Argument::Number(n), None),
-            destination: dest,
-        } => result.insert((*dest).clone(), *n),
-        Connection {
-            connection_type: Type::And,
-            arguments: (Argument::Wire(x), Some(Argument::Wire(y))),
-            destination: dest,
-        } => result.insert(
-            (*dest).clone(),
-            result.get(x).unwrap() & result.get(y).unwrap(),
-        ),
-        Connection {
-            connection_type: Type::Or,
-            arguments: (Argument::Wire(x), Some(Argument::Wire(y))),
-            destination: dest,
-        } => result.insert(
-            (*dest).clone(),
-            result.get(x).unwrap() | result.get(y).unwrap(),
-        ),
-        Connection {
-            connection_type: Type::LShift,
-            arguments: (Argument::Wire(x), Some(Argument::Number(p))),
-            destination: dest,
-        } => result.insert((*dest).clone(), result.get(x).unwrap() << *p),
-        Connection {
-            connection_type: Type::RShift,
-            arguments: (Argument::Wire(x), Some(Argument::Number(p))),
-            destination: dest,
-        } => result.insert((*dest).clone(), result.get(x).unwrap() >> *p),
-        Connection {
-            connection_type: Type::Not,
-            arguments: (Argument::Wire(x), None),
-            destination: dest,
-        } => result.insert((*dest).clone(), !result.get(x).unwrap()),
-        _ => todo!(),
-    };
+fn expand_arg(gates: &Vec<Gate>, arg: Argument) -> Option<u16> {
+    match arg {
+        Argument::Number(number) => Some(number),
+        Argument::Wire(symbol) => run_circuit_for(gates, &symbol),
+    }
 }
 
-fn run_circuit(connections: &[Connection]) -> HashMap<String, u16> {
-    let mut result = HashMap::new();
-    connections
-        .iter()
-        .for_each(|connection| connect(&connection, &mut result));
-    result
+fn run_circuit_for(gates: &Vec<Gate>, dest: &str) -> Option<u16> {
+    let gate = gates.iter().find(|&g| g.destination == dest)?;
+    if let Gate {
+        gate_type: GateType::Assignment,
+        arguments: (Argument::Number(n), _),
+        destination: _,
+    } = gate
+    {
+        return Some(*n);
+    }
+    match gate {
+        Gate {
+            gate_type: GateType::Assignment,
+            arguments: (x, None),
+            destination: _dest,
+        } => return expand_arg(gates, x.clone()),
+        Gate {
+            gate_type: GateType::And,
+            arguments: (x, Some(y)),
+            destination: _dest,
+        } => {
+            let a: Option<u16> = expand_arg(gates, x.clone());
+            let b: Option<u16> = expand_arg(gates, y.clone());
+            return a.zip(b).map(|(x, y)| x & y);
+        }
+        Gate {
+            gate_type: GateType::Or,
+            arguments: (x, Some(y)),
+            destination: _dest,
+        } => {
+            let a: Option<u16> = expand_arg(gates, x.clone());
+            let b: Option<u16> = expand_arg(gates, y.clone());
+            return a.zip(b).map(|(x, y)| x | y);
+        }
+        Gate {
+            gate_type: GateType::LShift,
+            arguments: (x, Some(Argument::Number(p))),
+            destination: _dest,
+        } => {
+            let a: Option<u16> = expand_arg(gates, x.clone());
+            return a.map(|x| x << *p);
+        }
+        Gate {
+            gate_type: GateType::RShift,
+            arguments: (x, Some(Argument::Number(p))),
+            destination: _dest,
+        } => {
+            let a: Option<u16> = expand_arg(gates, x.clone());
+            return a.map(|x| x >> *p);
+        }
+        Gate {
+            gate_type: GateType::Not,
+            arguments: (x, None),
+            destination: _dest,
+        } => {
+            let a: Option<u16> = expand_arg(gates, x.clone());
+            return a.map(|x| !x);
+        }
+        _ => None,
+    }
 }
 
 pub fn solve_part1(input: &[&str]) -> u16 {
-    let connections_vec: Vec<Connection> =
-        input.iter().filter_map(|&c| parse_connection(c)).collect();
-    let wires = run_circuit(&connections_vec);
-    *wires.get("a").unwrap()
+    let wires = parse_all_connections(input);
+    run_circuit_for(&wires, "a").unwrap()
 }
 
-pub fn solve_part2(input: &[&str]) -> u16 {
-    0
+fn parse_all_connections(input: &[&str]) -> Vec<Gate> {
+    input.iter().filter_map(|&c| parse_gate_str(c)).collect()
 }
 
-/// Contains unit tests for Day 6 solutions, verifying the logic against
-/// examples provided in the Advent of Code problem description.
 #[cfg(test)]
 mod tests {
     use super::*; // Bring everything from outer scope into tests module
 
-    /// Tests `solve_part1` with a custom input to verify the light counting logic.
     #[test]
     fn test_part1() {
         let input = [
@@ -199,17 +230,16 @@ mod tests {
             "NOT x -> h",
             "NOT y -> i",
         ];
-        let parsed_input = input.map(|gate_str| parse_connection(gate_str).unwrap());
-        let mut result: HashMap<String, u16> = HashMap::new();
-        result.insert("d".to_string(), 72);
-        result.insert("e".to_string(), 507);
-        result.insert("f".to_string(), 492);
-        result.insert("g".to_string(), 114);
-        result.insert("h".to_string(), 65412);
-        result.insert("i".to_string(), 65079);
-        result.insert("x".to_string(), 123);
-        result.insert("y".to_string(), 456);
 
-        assert_eq!(result, run_circuit(&parsed_input));
+        let connections = parse_all_connections(&input);
+
+        assert_eq!(72, run_circuit_for(&connections, "d").unwrap());
+        assert_eq!(507, run_circuit_for(&connections, "e").unwrap());
+        assert_eq!(492, run_circuit_for(&connections, "f").unwrap());
+        assert_eq!(114, run_circuit_for(&connections, "g").unwrap());
+        assert_eq!(65412, run_circuit_for(&connections, "h").unwrap());
+        assert_eq!(65079, run_circuit_for(&connections, "i").unwrap());
+        assert_eq!(123, run_circuit_for(&connections, "x").unwrap());
+        assert_eq!(456, run_circuit_for(&connections, "y").unwrap());
     }
 }
