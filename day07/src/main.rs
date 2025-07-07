@@ -1,17 +1,24 @@
+//! Advent of Code 2015 - Day 7: "Some Assembly Required"
+//!
+//! This module implements a circuit simulator to determine the signal value
+//! on specific wires based on a set of logical gates. It uses memoization
+//! to handle dependencies and avoid redundant computations in the circuit.
+
 use aoc_lib::read_multiple_strings;
 
 use regex::Regex;
 use std::collections::HashMap;
-use std::sync::LazyLock; // <--- ADDED: Import HashMap
+use std::sync::LazyLock;
 
+/// Main entry point of the Day 7 solution.
+///
+/// Reads the input lines representing circuit gates, parses them,
+/// and then prints the signal value for wire 'a' for Part 1.
 fn main() {
     let lines_result = read_multiple_strings(7);
 
     if let Ok(owned_lines_vec) = lines_result {
-        let input_line_slices: Vec<&str> = owned_lines_vec
-            .iter()
-            .map(|s| s.as_str()) // Convert `&String` to `&str`
-            .collect(); // Collect these `&str` into a new `Vec<&str>`
+        let input_line_slices: Vec<&str> = owned_lines_vec.iter().map(|s| s.as_str()).collect();
 
         println!("Day 7 Part 1: {}", solve_part1(&input_line_slices));
     } else {
@@ -19,6 +26,7 @@ fn main() {
     }
 }
 
+/// Represents the type of logical gate in the circuit.
 #[derive(Debug)]
 enum GateType {
     Assignment,
@@ -29,12 +37,18 @@ enum GateType {
     Not,
 }
 
+/// Represents an argument to a gate, which can be either a wire symbol (String)
+/// or a direct numerical value (u16).
 #[derive(Debug, Clone)]
 enum Argument {
     Wire(String),
     Number(u16),
 }
 
+/// Represents a single gate in the circuit.
+///
+/// Contains the type of gate, its input arguments (one or two), and the
+/// destination wire where its output signal is placed.
 #[derive(Debug)]
 struct Gate {
     gate_type: GateType,
@@ -42,24 +56,43 @@ struct Gate {
     destination: String,
 }
 
+/// Regular expression for parsing assignment gates (e.g., "123 -> x" or "lx -> a").
 static ASSIGNMENT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
+/// Regular expression for parsing AND gates (e.g., "x AND y -> d").
 static AND_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+AND\s+(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
+/// Regular expression for parsing OR gates (e.g., "x OR y -> e").
 static OR_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+OR\s+(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
+/// Regular expression for parsing LSHIFT gates (e.g., "x LSHIFT 2 -> f").
 static LSHIFT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+LSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
 
+/// Regular expression for parsing RSHIFT gates (e.g., "y RSHIFT 2 -> g").
 static RSHIFT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^(\d+|[a-z]+)\s+RSHIFT\s+(\d+)\s*->\s*([a-z]+)$").unwrap());
 
+/// Regular expression for parsing NOT gates (e.g., "NOT x -> h").
 static NOT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^NOT\s+(\d+|[a-z]+)\s*->\s*([a-z]+)$").unwrap());
 
+/// Parses a single gate instruction string into an `Option<Gate>`.
+///
+/// It attempts to match the string against various gate regex patterns.
+/// If a match is found, it extracts arguments and destination, converts
+/// numbers/wires to `Argument` enum variants, and constructs a `Gate` struct.
+///
+/// # Arguments
+///
+/// * `gate_str` - The string representing a single gate instruction.
+///
+/// # Returns
+///
+/// `Some(Gate)` if parsing is successful, `None` otherwise.
 fn parse_gate_str(gate_str: &str) -> Option<Gate> {
     if let Some(captures) = ASSIGNMENT_RE.captures(gate_str) {
         let arg: Argument = captures[1].parse::<u16>().map_or_else(
@@ -136,6 +169,21 @@ fn parse_gate_str(gate_str: &str) -> Option<Gate> {
     return None;
 }
 
+/// Expands an `Argument` to its `u16` signal value.
+///
+/// If the argument is a `Number`, it returns the number directly.
+/// If the argument is a `Wire`, it recursively calls `run_circuit_for`
+/// to determine the signal value of that wire.
+///
+/// # Arguments
+///
+/// * `gates` - A reference to the vector of all gates in the circuit.
+/// * `arg` - The `Argument` to expand.
+/// * `memo` - A mutable reference to the memoization `HashMap` to store/retrieve wire values.
+///
+/// # Returns
+///
+/// `Some(u16)` if the argument can be resolved to a signal value, `None` otherwise.
 fn expand_arg(gates: &Vec<Gate>, arg: Argument, memo: &mut HashMap<String, u16>) -> Option<u16> {
     match arg {
         Argument::Number(number) => Some(number),
@@ -143,15 +191,29 @@ fn expand_arg(gates: &Vec<Gate>, arg: Argument, memo: &mut HashMap<String, u16>)
     }
 }
 
+/// Computes the signal value for a given destination wire.
+///
+/// This function uses memoization to store and retrieve already computed wire values,
+/// preventing infinite recursion and redundant calculations.
+/// It finds the gate that outputs to `dest` and recursively computes its input arguments.
+///
+/// # Arguments
+///
+/// * `gates` - A reference to the vector of all gates in the circuit.
+/// * `dest` - The name of the destination wire whose signal value is to be computed.
+/// * `memo` - A mutable reference to the memoization `HashMap` to store/retrieve wire values.
+///
+/// # Returns
+///
+/// `Some(u16)` if the signal value for `dest` can be computed, `None` if it cannot
+/// (e.g., due to an unresolvable dependency).
 fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16>) -> Option<u16> {
-    // Memoization check
     if let Some(&value) = memo.get(dest) {
         return Some(value);
     }
 
     let gate = gates.iter().find(|&g| g.destination == dest)?;
 
-    // This `if let` handles direct number assignments like "123 -> x"
     if let Gate {
         gate_type: GateType::Assignment,
         arguments: (Argument::Number(n), _),
@@ -159,26 +221,24 @@ fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16
     } = gate
     {
         let result = Some(*n);
-        // Store result in memo
         memo.insert(dest.to_string(), result.unwrap());
         return result;
     }
 
-    // This match handles all other gate types, including wire assignments like "x -> y"
     let result = match gate {
         Gate {
             gate_type: GateType::Assignment,
             arguments: (x, None),
             destination: _dest,
-        } => expand_arg(gates, x.clone(), memo), // <--- MODIFIED: Pass `memo`
+        } => expand_arg(gates, x.clone(), memo),
 
         Gate {
             gate_type: GateType::And,
             arguments: (x, Some(y)),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
-            let b: Option<u16> = expand_arg(gates, y.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo);
+            let b: Option<u16> = expand_arg(gates, y.clone(), memo);
             a.zip(b).map(|(x, y)| x & y)
         }
         Gate {
@@ -186,8 +246,8 @@ fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16
             arguments: (x, Some(y)),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
-            let b: Option<u16> = expand_arg(gates, y.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo);
+            let b: Option<u16> = expand_arg(gates, y.clone(), memo);
             a.zip(b).map(|(x, y)| x | y)
         }
         Gate {
@@ -195,7 +255,7 @@ fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16
             arguments: (x, Some(Argument::Number(p))),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo);
             a.map(|x| x << *p)
         }
         Gate {
@@ -203,7 +263,7 @@ fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16
             arguments: (x, Some(Argument::Number(p))),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo);
             a.map(|x| x >> *p)
         }
         Gate {
@@ -211,35 +271,59 @@ fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16
             arguments: (x, None),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo);
             a.map(|x| !x)
         }
         _ => None,
     };
 
-    // <--- ADDED: Store result in memo before returning
     if let Some(val) = result {
         memo.insert(dest.to_string(), val);
     }
     result
 }
 
+/// Solves Day 7, Part 1: Computes the final signal value on wire 'a'.
+///
+/// Parses all circuit gate instructions, then uses the `run_circuit_for`
+/// function with memoization to determine the value of wire 'a'.
+///
+/// # Arguments
+///
+/// * `input` - A slice of string slices, each representing a gate instruction.
+///
+/// # Returns
+///
+/// The `u16` signal value on wire 'a'. Panics if 'a' cannot be resolved.
 pub fn solve_part1(input: &[&str]) -> u16 {
     let wires = parse_all_connections(input);
-    // <--- ADDED: Initialize the memoization HashMap
     let mut memo: HashMap<String, u16> = HashMap::new();
-    // <--- MODIFIED: Pass the mutable reference to memo
     run_circuit_for(&wires, "a", &mut memo).unwrap()
 }
 
+/// Parses all connection strings into a vector of `Gate` structs.
+///
+/// Filters out any strings that cannot be successfully parsed into a `Gate`.
+///
+/// # Arguments
+///
+/// * `input` - A slice of string slices, each representing a gate instruction.
+///
+/// # Returns
+///
+/// A `Vec<Gate>` containing all successfully parsed gates.
 fn parse_all_connections(input: &[&str]) -> Vec<Gate> {
     input.iter().filter_map(|&c| parse_gate_str(c)).collect()
 }
 
+/// Contains unit tests for Day 7 solution, verifying the circuit logic
+/// against examples provided in the Advent of Code problem description.
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// Tests the circuit simulation with the example input from Part 1,
+    /// verifying the signal values for various wires.
     #[test]
     fn test_part1() {
         let input = [
@@ -255,7 +339,6 @@ mod tests {
 
         let connections = parse_all_connections(&input);
 
-        // <--- MODIFIED: Create and pass a mutable HashMap
         let mut memo_d = HashMap::new();
         assert_eq!(72, run_circuit_for(&connections, "d", &mut memo_d).unwrap());
 
