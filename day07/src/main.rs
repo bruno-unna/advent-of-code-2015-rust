@@ -20,7 +20,9 @@ fn main() {
     if let Ok(owned_lines_vec) = lines_result {
         let input_line_slices: Vec<&str> = owned_lines_vec.iter().map(|s| s.as_str()).collect();
 
-        println!("Day 7 Part 1: {}", solve_part1(&input_line_slices));
+        let part_1 = solve_part1(&input_line_slices);
+        println!("Day 7 Part 1: {}", part_1);
+        println!("Day 7 Part 2: {}", solve_part2(&input_line_slices, part_1))
     } else {
         eprintln!("Error reading input: {:?}", lines_result.err());
     }
@@ -296,9 +298,40 @@ fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16
 ///
 /// The `u16` signal value on wire 'a'. Panics if 'a' cannot be resolved.
 pub fn solve_part1(input: &[&str]) -> u16 {
-    let wires = parse_all_connections(input);
+    let gates = parse_all_connections(input);
     let mut memo: HashMap<String, u16> = HashMap::new();
-    run_circuit_for(&wires, "a", &mut memo).unwrap()
+    run_circuit_for(&gates, "a", &mut memo).unwrap()
+}
+
+/// Solves Day 7, Part 2: Computes the final signal value on wire 'a' after overriding wire 'b'.
+///
+/// This function re-initializes the circuit by parsing all connections. It then finds
+/// the gate that outputs to wire 'b', removes it, modifies its input to be the
+/// `part_1` result (the signal value from wire 'a' in Part 1), and re-inserts it.
+/// Finally, it uses `run_circuit_for` with a fresh memoization cache to determine
+/// the new signal value of wire 'a' with the modified circuit.
+///
+/// # Arguments
+///
+/// * `input` - A slice of string slices, each representing a circuit gate instruction.
+/// * `part_1` - The `u16` signal value computed for wire 'a' in Part 1.
+///
+/// # Returns
+///
+/// The `u16` signal value on wire 'a' in the modified circuit.
+///
+/// # Panics
+///
+/// Panics if the gate for wire 'b' is not found, or if wire 'a' cannot be resolved.
+pub fn solve_part2(input: &[&str], part_1: u16) -> u16 {
+    let mut gates = parse_all_connections(input);
+    let index_of_b = gates.iter().position(|g| g.destination == "b").unwrap();
+    let mut b = gates.swap_remove(index_of_b);
+    b.arguments.0 = Argument::Number(part_1);
+    gates.push(b);
+
+    let mut memo: HashMap<String, u16> = HashMap::new();
+    run_circuit_for(&gates, "a", &mut memo).unwrap()
 }
 
 /// Parses all connection strings into a vector of `Gate` structs.
