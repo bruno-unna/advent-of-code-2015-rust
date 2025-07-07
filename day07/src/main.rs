@@ -1,12 +1,12 @@
 use aoc_lib::read_multiple_strings;
 
 use regex::Regex;
-use std::sync::LazyLock;
+use std::collections::HashMap;
+use std::sync::LazyLock; // <--- ADDED: Import HashMap
 
 fn main() {
     let lines_result = read_multiple_strings(7);
 
-    // Use `if let Ok(...)` for better error handling than `if .is_ok() .unwrap()`
     if let Ok(owned_lines_vec) = lines_result {
         let input_line_slices: Vec<&str> = owned_lines_vec
             .iter()
@@ -136,78 +136,100 @@ fn parse_gate_str(gate_str: &str) -> Option<Gate> {
     return None;
 }
 
-fn expand_arg(gates: &Vec<Gate>, arg: Argument) -> Option<u16> {
+fn expand_arg(gates: &Vec<Gate>, arg: Argument, memo: &mut HashMap<String, u16>) -> Option<u16> {
     match arg {
         Argument::Number(number) => Some(number),
-        Argument::Wire(symbol) => run_circuit_for(gates, &symbol),
+        Argument::Wire(symbol) => run_circuit_for(gates, &symbol, memo),
     }
 }
 
-fn run_circuit_for(gates: &Vec<Gate>, dest: &str) -> Option<u16> {
+fn run_circuit_for(gates: &Vec<Gate>, dest: &str, memo: &mut HashMap<String, u16>) -> Option<u16> {
+    // Memoization check
+    if let Some(&value) = memo.get(dest) {
+        return Some(value);
+    }
+
     let gate = gates.iter().find(|&g| g.destination == dest)?;
+
+    // This `if let` handles direct number assignments like "123 -> x"
     if let Gate {
         gate_type: GateType::Assignment,
         arguments: (Argument::Number(n), _),
         destination: _,
     } = gate
     {
-        return Some(*n);
+        let result = Some(*n);
+        // Store result in memo
+        memo.insert(dest.to_string(), result.unwrap());
+        return result;
     }
-    match gate {
+
+    // This match handles all other gate types, including wire assignments like "x -> y"
+    let result = match gate {
         Gate {
             gate_type: GateType::Assignment,
             arguments: (x, None),
             destination: _dest,
-        } => return expand_arg(gates, x.clone()),
+        } => expand_arg(gates, x.clone(), memo), // <--- MODIFIED: Pass `memo`
+
         Gate {
             gate_type: GateType::And,
             arguments: (x, Some(y)),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone());
-            let b: Option<u16> = expand_arg(gates, y.clone());
-            return a.zip(b).map(|(x, y)| x & y);
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let b: Option<u16> = expand_arg(gates, y.clone(), memo); // <--- MODIFIED: Pass `memo`
+            a.zip(b).map(|(x, y)| x & y)
         }
         Gate {
             gate_type: GateType::Or,
             arguments: (x, Some(y)),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone());
-            let b: Option<u16> = expand_arg(gates, y.clone());
-            return a.zip(b).map(|(x, y)| x | y);
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            let b: Option<u16> = expand_arg(gates, y.clone(), memo); // <--- MODIFIED: Pass `memo`
+            a.zip(b).map(|(x, y)| x | y)
         }
         Gate {
             gate_type: GateType::LShift,
             arguments: (x, Some(Argument::Number(p))),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone());
-            return a.map(|x| x << *p);
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            a.map(|x| x << *p)
         }
         Gate {
             gate_type: GateType::RShift,
             arguments: (x, Some(Argument::Number(p))),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone());
-            return a.map(|x| x >> *p);
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            a.map(|x| x >> *p)
         }
         Gate {
             gate_type: GateType::Not,
             arguments: (x, None),
             destination: _dest,
         } => {
-            let a: Option<u16> = expand_arg(gates, x.clone());
-            return a.map(|x| !x);
+            let a: Option<u16> = expand_arg(gates, x.clone(), memo); // <--- MODIFIED: Pass `memo`
+            a.map(|x| !x)
         }
         _ => None,
+    };
+
+    // <--- ADDED: Store result in memo before returning
+    if let Some(val) = result {
+        memo.insert(dest.to_string(), val);
     }
+    result
 }
 
 pub fn solve_part1(input: &[&str]) -> u16 {
     let wires = parse_all_connections(input);
-    run_circuit_for(&wires, "a").unwrap()
+    // <--- ADDED: Initialize the memoization HashMap
+    let mut memo: HashMap<String, u16> = HashMap::new();
+    // <--- MODIFIED: Pass the mutable reference to memo
+    run_circuit_for(&wires, "a", &mut memo).unwrap()
 }
 
 fn parse_all_connections(input: &[&str]) -> Vec<Gate> {
@@ -216,7 +238,7 @@ fn parse_all_connections(input: &[&str]) -> Vec<Gate> {
 
 #[cfg(test)]
 mod tests {
-    use super::*; // Bring everything from outer scope into tests module
+    use super::*;
 
     #[test]
     fn test_part1() {
@@ -233,13 +255,50 @@ mod tests {
 
         let connections = parse_all_connections(&input);
 
-        assert_eq!(72, run_circuit_for(&connections, "d").unwrap());
-        assert_eq!(507, run_circuit_for(&connections, "e").unwrap());
-        assert_eq!(492, run_circuit_for(&connections, "f").unwrap());
-        assert_eq!(114, run_circuit_for(&connections, "g").unwrap());
-        assert_eq!(65412, run_circuit_for(&connections, "h").unwrap());
-        assert_eq!(65079, run_circuit_for(&connections, "i").unwrap());
-        assert_eq!(123, run_circuit_for(&connections, "x").unwrap());
-        assert_eq!(456, run_circuit_for(&connections, "y").unwrap());
+        // <--- MODIFIED: Create and pass a mutable HashMap
+        let mut memo_d = HashMap::new();
+        assert_eq!(72, run_circuit_for(&connections, "d", &mut memo_d).unwrap());
+
+        let mut memo_e = HashMap::new();
+        assert_eq!(
+            507,
+            run_circuit_for(&connections, "e", &mut memo_e).unwrap()
+        );
+
+        let mut memo_f = HashMap::new();
+        assert_eq!(
+            492,
+            run_circuit_for(&connections, "f", &mut memo_f).unwrap()
+        );
+
+        let mut memo_g = HashMap::new();
+        assert_eq!(
+            114,
+            run_circuit_for(&connections, "g", &mut memo_g).unwrap()
+        );
+
+        let mut memo_h = HashMap::new();
+        assert_eq!(
+            65412,
+            run_circuit_for(&connections, "h", &mut memo_h).unwrap()
+        );
+
+        let mut memo_i = HashMap::new();
+        assert_eq!(
+            65079,
+            run_circuit_for(&connections, "i", &mut memo_i).unwrap()
+        );
+
+        let mut memo_x = HashMap::new();
+        assert_eq!(
+            123,
+            run_circuit_for(&connections, "x", &mut memo_x).unwrap()
+        );
+
+        let mut memo_y = HashMap::new();
+        assert_eq!(
+            456,
+            run_circuit_for(&connections, "y", &mut memo_y).unwrap()
+        );
     }
 }
